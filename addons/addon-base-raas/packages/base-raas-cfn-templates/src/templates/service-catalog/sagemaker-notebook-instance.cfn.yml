@@ -271,6 +271,24 @@ Resources:
                 (crontab -l 2>/dev/null; echo "*/1 * * * * /usr/bin/python /usr/local/bin/autostop.py --time $IDLE_TIME --ignore-connections >> /var/log/autostop.log") | crontab -
               fi
 
+              # this is new
+              sudo -u ec2-user -i <<'EOF'    
+              ln -s /home/ec2-user/SageMaker/envs/custom-r /home/ec2-user/anaconda3/envs/custom-r
+              EOF
+              echo "Restarting the Jupyter server..."
+              restart jupyter-server
+
+      OnCreate:
+        - Content:
+            Fn::Base64: !Sub |
+              #!/usr/bin/env bash
+              sudo -u ec2-user -i << 'EOF'
+              aws s3 cp "${EnvironmentInstanceFiles}/custom_r.tgz" /tmp/
+              tar xvzf /tmp/custom_r.tgz -C ~/SageMaker/
+              rm /tmp/custom_r.tgz
+              EOF
+      
+
 Outputs:
   NotebookInstanceName:
     Description: The name of the SageMaker notebook instance.

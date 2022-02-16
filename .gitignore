@@ -36,3 +36,5 @@ docs/build
 
 # rStudio specific
 source/ServiceWorkbenchOnAWS/main/solution/machine-images/config/infra/files/rstudio/*
+
+main/solution/post-deployment/config/environment-files/custom_r.tgz
