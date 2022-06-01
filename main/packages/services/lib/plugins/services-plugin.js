@@ -14,6 +14,8 @@
  */
 
 const HelloService = require('../hello/hello-service');
+const PclusterService = require('../pcluster/pcluster-service');
+
 /**
  * Function to register solution specific services to the services container
  * @param container An instance of ServicesContainer to register services to
@@ -26,6 +28,7 @@ async function registerServices(container, pluginRegistry) {
   // This is where you can register your services
   // Example:
   container.register('helloService', new HelloService());
+  container.register('pclusterService', new PclusterService());
   // container.register('service2', new Service2());
 }
 

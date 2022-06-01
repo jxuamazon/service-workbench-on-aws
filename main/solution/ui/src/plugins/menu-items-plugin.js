@@ -60,6 +60,7 @@ function registerMenuItems(itemsMap, { location, appContext }) {
   const items = new Map([
     ...itemsMap,
     // ['/hello', { title: 'Hello', icon: 'hand spock', shouldShow: true /* isAdmin */ }],
+    ['/pcluster', { title: 'HPC', icon: 'amazon', shouldShow: true /* isAdmin */ }],
   ]);
 
   // DO NOT forget to return items here. If you do not return any menu items here then the menu will not show any items

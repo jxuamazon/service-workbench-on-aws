@@ -18,6 +18,7 @@ const prepareContext = require('@aws-ee/base-controllers/lib/middlewares/prepare
 const ensureActive = require('@aws-ee/base-controllers/lib/middlewares/ensure-active');
 
 const helloController = require('../hello-controller');
+const pclusterController = require('../pcluster-controller');
 
 /**
  * Adds solution routes to the given routesMap.
@@ -39,6 +40,7 @@ async function getRoutes(routesMap, pluginRegistry) {
     ...routesMap,
     // PROTECTED APIS accessible only to logged in active users
     ['/api/hello', [setupAuthContext, prepareContext, ensureActive, helloController]],
+    ['/api/pcluster', [setupAuthContext, prepareContext, ensureActive, pclusterController]],
   ]);
 
   return routes;

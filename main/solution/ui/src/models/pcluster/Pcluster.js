@@ -14,15 +14,17 @@
  */
 
 /* eslint-disable import/prefer-default-export */
-// eslint-disable-next-line no-unused-vars
-import { httpApiGet, httpApiPost, httpApiPut, httpApiDelete } from '@aws-ee/base-ui/dist/helpers/api';
+import { types } from 'mobx-state-tree';
 
-function getHelloMessages() {
-  return httpApiGet('api/hello');
-}
+// A sample model using mobx state tree
+const Pcluster = types
+  .model('Pcluster', {
+    cluster_name: '',
+    headnode_ip: '',
+    partitions: types.frozen({}),
+    cluster_status: ''
+  })
+  .actions(self => ({})) // eslint-disable-line no-unused-vars
+  .views(self => ({})); // eslint-disable-line no-unused-vars
 
-function getPclusterConfigs() {
-  return httpApiGet('api/pcluster');
-}
-
-export { getHelloMessages, getPclusterConfigs };
+export { Pcluster };

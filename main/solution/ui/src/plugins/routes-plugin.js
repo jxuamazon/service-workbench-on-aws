@@ -16,6 +16,7 @@
 import withAuth from '@aws-ee/base-ui/dist/withAuth';
 
 import HelloPage from '../parts/hello/HelloPage';
+import PclusterPage from '../parts/pcluster/PclusterPage';
 
 /**
  * Adds your routes to the given routesMap.
@@ -50,7 +51,7 @@ function registerRoutes(routesMap, { location, appContext }) {
 
   // Register additional routes and their React Components as per your solution requirements
 
-  const routes = new Map([...routesMap, ['/hello', withAuth(HelloPage)]]);
+  const routes = new Map([...routesMap, ['/hello', withAuth(HelloPage)], ['/pcluster', withAuth(PclusterPage)]]);
 
   // DO NOT forget to return routes here. If you do not return here, no routes will be configured in React router
   return routes;

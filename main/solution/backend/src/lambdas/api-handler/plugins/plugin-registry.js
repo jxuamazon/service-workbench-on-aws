@@ -37,6 +37,7 @@ const baseRaasAppStreamConnectionUrlPlugin = require('@aws-ee/base-raas-appstrea
 const baseRaasAppStreamAwsAccountMgmtPlugin = require('@aws-ee/base-raas-appstream-services/lib/plugins/aws-account-mgmt-plugin');
 
 const routesPlugin = require('./routes-plugin');
+const packageRoutesPlugin = require('../../../../../../packages/controllers/lib/plugins/routes-plugin')
 
 const extensionPoints = {
   'service': [
@@ -55,6 +56,7 @@ const extensionPoints = {
     environmentTypeRoutesPlugin,
     keyPairRoutesPlugin,
     routesPlugin,
+    packageRoutesPlugin,
   ],
   'audit': [baseAuditPlugin],
   'authentication-provider-type': [], // No plugins at this point. The built in authentication provider types are registered by "addon-base-rest-api/packages/services/lib/authentication-providers/authentication-provider-type-service.js" service
