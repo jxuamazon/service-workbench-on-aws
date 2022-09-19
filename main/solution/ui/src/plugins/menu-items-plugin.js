@@ -31,7 +31,7 @@
  *
  * @returns Map<*> Returns A Map containing navigation menu items with the same shape as "itemsMap"
  */
-
+//import _ from 'lodash';
 // eslint-disable-next-line no-unused-vars
 function registerMenuItems(itemsMap, { location, appContext }) {
   // This is where you can
@@ -57,6 +57,9 @@ function registerMenuItems(itemsMap, { location, appContext }) {
 
   // Register additional custom navigation menu items here
   // const isAdmin = _.get(appContext, 'userStore.user.isAdmin');
+  ///// THIS IS FOR DEBUGGING
+  //const store = _.get(appContext, 'pclusterStore');
+  //store.load()
   const items = new Map([
     ...itemsMap,
     // ['/hello', { title: 'Hello', icon: 'hand spock', shouldShow: true /* isAdmin */ }],

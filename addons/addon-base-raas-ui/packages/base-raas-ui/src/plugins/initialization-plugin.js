@@ -36,7 +36,7 @@ async function postInit(payload, appContext) {
       awsAccountsStore.load(),
       userRolesStore.load(),
       indexesStore.load(),
-      projectsStore.load(),
+      projectsStore.load()
     ]);
   }
 }

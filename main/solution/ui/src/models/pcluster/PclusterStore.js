@@ -17,7 +17,7 @@ import _ from 'lodash';
 import { types } from 'mobx-state-tree';
 import { BaseStore } from '@aws-ee/base-ui/dist/models/BaseStore';
 
-import { getPclusterConfigs, getPclusterList } from '../../helpers/api';
+import { getPclusterConfigs } from '../../helpers/api';
 import { Pcluster } from './Pcluster';
 
 // ==================================================================
@@ -35,7 +35,6 @@ const PclusterStore = BaseStore.named('PClusterStore')
         //        const data = await getPclusterList();
         //        console.log(data);
         const configs = await getPclusterConfigs();
-        //        console.log(configs);
         self.runInAction(() => {
           // Because this is an example, it is a just quick way to replace the array, but you should
           // examine each element instead and update or insert each element so that your

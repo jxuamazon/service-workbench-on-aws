@@ -54,6 +54,7 @@ const extensionPoints = {
     keyPairAppContextItemsPlugin,
     raasAppContextItemsPlugin,
     appContextItemsPlugin,
+    routesPlugin
   ],
   'initialization': [baseInitializationPlugin, raasInitializationPlugin, initializationPlugin],
   'authentication': [baseAuthenticationPlugin],

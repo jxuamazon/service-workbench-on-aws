@@ -16,6 +16,8 @@
 /* eslint-disable no-await-in-loop */
 // const _ = require('lodash');
 const Service = require('@aws-ee/base-services-container/lib/service');
+const ServicesContainer = require('@aws-ee/base-services-container/lib/services-container');
+const SettingsService = require('@aws-ee/base-services/lib/settings/env-settings-service');
 
 const { allowIfActive, allowIfAdmin } = require('@aws-ee/base-services/lib/authorization/authorization-utils');
 
@@ -30,12 +32,14 @@ class PclusterService extends Service {
   constructor() {
     super();
     this.dependency(['aws', 'jsonSchemaValidationService', 'authorizationService', 'auditWriterService']);
+
   }
 
   async init() {
     await super.init();
     this.aws = await this.service('aws');
     this.client = new this.aws.sdk.CloudFormation();
+
   }
 
   async getClusterInfo(cluster_name, output_key) {
@@ -66,6 +70,7 @@ class PclusterService extends Service {
         SecretId: 'slurm_token_' + clusterName
       };
       sm_client.getSecretValue(params, function (err, data) {
+        console.log("------------ getSecretValue", params, data);
         if (err) {
           reject(err);
         } else {
@@ -104,7 +109,6 @@ class PclusterService extends Service {
 
     try {
       result = await this.doRequest(opts);
-      console.log("-------------------- in getClusterAPIEndpointInfo", result.toString());
     } catch (error) {
       console.log("Error getting response in getClusterAPIEndpointInfo", error);
     }
@@ -113,15 +117,23 @@ class PclusterService extends Service {
   }
 
   async getPclusterList(requestContext, rawData) {
-    const credentials = await this.getCredentials(requestContext, rawData); //TODO: grab the API endpoint from settings
+    let pcluster_hostname = rawData.pclusterHostname;
 
+    if (!pcluster_hostname) {
+      console.log("Pcluster config is not set in config file");
+      return
+    }
+
+    const credentials = await this.getCredentials(requestContext, rawData); //TODO: grab the API endpoint from settings
     let opts = {
-      hostname: 'ng8alljjkf.execute-api.us-east-1.amazonaws.com',
+      hostname: rawData.pclusterHostname,
       service: 'execute-api',
       method: 'GET',
       path: '/prod/v3/clusters',
-      url: 'https://ng8alljjkf.execute-api.us-east-1.amazonaws.com/prod/v3/clusters'
+      url: 'https://' + rawData.pclusterHostname + '/prod/v3/clusters'
     };
+
+    console.log(' -------------- opts', opts)
     let secs = {
       secretAccessKey: credentials.secretAccessKey,
       accessKeyId: credentials.accessKeyId,
@@ -190,12 +202,14 @@ class PclusterService extends Service {
   }
 
   async getClusters(cluster_list) {
-    let clusters = []; // this is for testing
+    let clusters = [];
 
+    // this is for testing
+    //TODO: make API calls to get he public IP
     const test_host_map = new Map();
     test_host_map.set('172.31.18.244', 'ec2-52-23-202-252.compute-1.amazonaws.com');
-    test_host_map.set('172.31.28.9', 'ec2-3-80-218-63.compute-1.amazonaws.com');
-    test_host_map.set('172.31.29.52', 'ec2-54-234-134-194.compute-1.amazonaws.com');
+    test_host_map.set('172.31.18.192', 'ec2-54-211-32-148.compute-1.amazonaws.com');
+    test_host_map.set('172.31.29.137', 'ec2-3-88-211-3.compute-1.amazonaws.com');
 
     if (cluster_list) {
       for (let i = 0; i < cluster_list.length; i++) {
@@ -211,14 +225,15 @@ class PclusterService extends Service {
             get_headers,
             _
           } = await this.getSlurmRestAuthHeaders(c.clusterName);
-
           if (get_headers) {
+            console.log(" before ---------- ", head_ip);
             let partitions_info = await this.getClusterAPIEndpointInfo(head_ip, 8082, '/slurm/v0.0.35/partitions/', 'GET', get_headers); // the return partitions json use partition name as the attribute 
+            console.log(" After ---------- ", partitions_info);
 
             partitions = JSON.parse(partitions_info).partitions;
           }
         } catch (error) {
-          console.log("Cluster ", c.clusterName, "doesn't have slurm token, it doesn't have REST API", error);
+          console.log("Cluster ", c.clusterName, "doesn't have slurm token, it doesn't have REST API");
         }
 
         clusters.push({
@@ -275,7 +290,7 @@ class PclusterService extends Service {
     const [aws] = await this.service(['aws']);
     const {
       roleArn: RoleArn,
-      externalId: ExternalId
+      externalId: ExternalId,
     } = rawData;
     const sts = new aws.sdk.STS();
     const {

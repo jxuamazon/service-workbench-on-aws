@@ -26,14 +26,46 @@ import { isStoreLoading, isStoreError, isStoreEmpty, isStoreReady } from '@aws-e
 import BasicProgressPlaceholder from '@aws-ee/base-ui/dist/parts/helpers/BasicProgressPlaceholder';
 import ErrorBox from '@aws-ee/base-ui/dist/parts/helpers/ErrorBox';
 import { PclusterCard } from './PclusterCard';
+import { registerContextItems } from '../../models/pcluster/PclusterStore'
+import { Pcluster } from '../../models/pcluster/Pcluster';
 
 // expected props
 // - PclusterStore (via injection)
 class PclusterPage extends React.Component {
+
+  constructor(props) {
+    super(props);
+    this.state = {
+      dataState: "notloaded"
+    };
+    //    this.fetch = this.fetch.bind(this)
+  }
+
   componentDidMount() {
     window.scrollTo(0, 0);
-    const store = this.pclusterStore;
-    if (!isStoreReady(store)) swallowError(store.load());
+    this.fetch().then(data => {
+      this.setState({
+        pclusterStore: data,
+        dataState: "loaded"
+      });
+    });
+    //    const store = this.pclusterStore;
+    //if (!isStoreReady(this.store)) {
+    //      swallowError(store.load());
+    //  this.store.load();
+    //};
+  }
+
+  async fetch() {
+    const appContext = {};
+    await registerContextItems(appContext)
+    const store = appContext.pclusterStore;
+    await store.load();
+    return store;
+  }
+
+  componentDidCatch(err, errorInfo) {
+    console.log("Error caught", err, errorInfo);
   }
 
   goto(pathname) {
@@ -42,27 +74,12 @@ class PclusterPage extends React.Component {
   }
 
   get pclusterStore() {
-    return this.props.pclusterStore;
+    return this.state.pclusterStore;
   }
 
   render() {
-    const store = this.pclusterStore;
-    if (!store) return null;
-
-    // Render loading, error, or tab content
-    let content;
-    if (isStoreError(store)) {
-      content = <ErrorBox error={store.error} className="mt3 mr0 ml0" />;
-    } else if (isStoreLoading(store)) {
-      content = <BasicProgressPlaceholder segmentCount={1} className="mt3 mr0 ml0" />;
-    } else if (isStoreEmpty(store)) {
-      content = this.renderEmpty();
-    } else {
-      content = this.renderContent();
-    }
-
     return (
-      <Container className="mt3 mb4">
+      <Container key={this.state.dataState} className="mt3 mb4"  >
         {this.renderTitle()}
         {this.renderCards()}
       </Container>
@@ -72,32 +89,23 @@ class PclusterPage extends React.Component {
 
 
   renderCards() {
-    const list = this.pclusterStore.list;
+    const store = this.state.pclusterStore;
+    let plist = [];
+
+    try {
+      plist = store.list;
+    } catch (err) {
+      //ignore , before the store is loaded , store.list will error
+    }
     return (
-      <Card.Group stackable itensPerRow={3}>
-        {_.map(list, Pcluster => {
-          return <PclusterCard cluster={Pcluster} />;
+      <Card.Group stackable itemsPerRow={3}>
+        {_.map(plist, Pcluster => {
+          return <PclusterCard key={Pcluster.cluster_name} cluster={Pcluster} />;
         })}
       </Card.Group>
     )
   }
 
-
-
-  renderContent() {
-    const list = this.pclusterStore.list;
-    console.log(list)
-    return (
-      <Segment.Group className="mt3">
-        {_.map(list, (item, index) => (
-          <Segment.Group horizontal>
-            <Segment key={index}>{item.cluster_name}</Segment>
-            <Segment key={index}>{item.headnode_ip}</Segment>
-          </Segment.Group>
-        ))}
-      </Segment.Group>
-    );
-  }
 
   renderEmpty() {
     return (
@@ -129,4 +137,5 @@ decorate(PclusterPage, {
   pclusterStore: computed,
 });
 
-export default inject('pclusterStore')(withRouter(observer(PclusterPage)));
+//export default inject('pclusterStore')(withRouter(observer(PclusterPage)));
+export default PclusterPage;

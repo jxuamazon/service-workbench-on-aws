@@ -22,6 +22,21 @@ async function configure(context) {
   const wrap = context.wrap;
   const boom = context.boom; // eslint-disable-line no-unused-vars
   const settings = context.settings; // eslint-disable-line no-unused-vars
+  const pclusterService = await context.service('pclusterService');
+  const awsAccountsService = await context.service('awsAccountsService');
+
+  //get some settings from config
+  //  let settingsService = null;
+  //  const container = new ServicesContainer();
+  //  container.register('settings', new SettingsService());
+  //  await container.initServices();
+  //  settingsService = await container.find('settings');
+  let plugin_config = settings.get('pluginConfig');
+  let pcluster_config = null;
+  if (plugin_config) {
+    let pc = JSON.parse(plugin_config);
+    if (pc['pcluster']) pcluster_config = pc['pcluster']
+  }
 
   // ===============================================================
   //  GET / (mounted to /api/hello)
@@ -29,9 +44,24 @@ async function configure(context) {
   router.get(
     '/',
     wrap(async (req, res) => {
-      const pclusterService = await context.service('pclusterService');
       const requestContext = res.locals.requestContext;
-      const result = await helloService.getHelloMessages(requestContext /* , rawData */);
+      const awsAccounts = await awsAccountsService.list(requestContext); //TODO: get the accountId from environment
+      const accountId = pcluster_config['hpcAccountId'];
+      const pcluster_hostname = pcluster_config['pclusterHostname'];
+      let rawData = '';
+      if (awsAccounts) {
+        awsAccounts.forEach(account => {
+          if (account.accountId == accountId) {
+            rawData = {
+              roleArn: account.roleArn,
+              externalId: account.externalId,
+              pclusterHostname: pcluster_hostname,
+            };
+          }
+        });
+      };
+
+      const result = await pclusterService.getPclusterConfig(requestContext, rawData);
       res.status(200).json(result);
     }),
   );

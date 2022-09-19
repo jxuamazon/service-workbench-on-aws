@@ -15,19 +15,13 @@
 
 import _ from 'lodash';
 import React, { Component } from 'react';
-import { inject, observer } from 'mobx-react';
-import { withRouter } from 'react-router-dom';
-import { Button, Card, Divider, Header, Icon, Label, Modal } from 'semantic-ui-react';
-import { action, computed, decorate, observable, runInAction } from 'mobx';
-import { displayError } from '@aws-ee/base-ui/dist/helpers/notification';
-import { gotoFn } from '@aws-ee/base-ui/dist/helpers/routing';
+import { Card, Header, Label } from 'semantic-ui-react';
 
 class PclusterCard extends Component {
 
     constructor(props) {
         super(props);
         this.pcluster = this.props.cluster;
-        console.log()
     }
 
     render() {

@@ -24,7 +24,7 @@ openDataScrapeHandler:
   events:
     - schedule:
         rate: rate(1 day)
-        description: 'Invokes the lambda function that scrapes the awslabs/open-data-registry to find new studies and insert them into DynamoDB.'
+        description: "Invokes the lambda function that scrapes the awslabs/open-data-registry to find new studies and insert them into DynamoDB."
 
 envStatusPollHandler:
   handler: src/lambdas/env-status-poll-handler/handler.handler
@@ -35,7 +35,7 @@ envStatusPollHandler:
   events:
     - schedule:
         rate: rate(1 minute)
-        description: 'Invokes the lambda function that polls and synchronize environment status.'
+        description: "Invokes the lambda function that polls and synchronize environment status."
   environment:
     APP_CUSTOM_USER_AGENT: ${self:custom.settings.customUserAgent}
     APP_IS_APP_STREAM_ENABLED: ${self:custom.settings.isAppStreamEnabled}
@@ -49,7 +49,7 @@ dataSourceReachabilityHandler:
   events:
     - schedule:
         rate: rate(5 minutes)
-        description: 'Invokes the lambda function that polls and synchronize data source account and study status.'
+        description: "Invokes the lambda function that polls and synchronize data source account and study status."
   environment:
     APP_SM_WORKFLOW: ${self:custom.settings.workflowStateMachineArn}
     APP_DB_STUDIES_CATEGORY_INDEX: ${self:custom.settings.dbStudiesCategoryIndex}
@@ -66,7 +66,7 @@ dataSourceReachabilityDailyHandler:
   events:
     - schedule:
         rate: rate(1 day)
-        description: 'Invokes the lambda function that polls and synchronize data source account and study status.'
+        description: "Invokes the lambda function that polls and synchronize data source account and study status."
   environment:
     APP_SM_WORKFLOW: ${self:custom.settings.workflowStateMachineArn}
     APP_CUSTOM_USER_AGENT: ${self:custom.settings.customUserAgent}
@@ -80,7 +80,7 @@ awsAccountOnboardingHandler:
   events:
     - schedule:
         rate: rate(1 minute) # Setting this to be the same as the dataSourceReachabilityHandler
-        description: 'Invokes the lambda function that polls CFN stacks and onboarding any pending accounts.'
+        description: "Invokes the lambda function that polls CFN stacks and onboarding any pending accounts."
   environment:
     APP_SM_WORKFLOW: ${self:custom.settings.workflowStateMachineArn}
     APP_CUSTOM_USER_AGENT: ${self:custom.settings.customUserAgent}
@@ -182,6 +182,7 @@ apiHandler:
     APP_EGRESS_STORE_BUCKET_NAME: ${self:custom.settings.egressStoreBucketName}
     APP_EGRESS_NOTIFICATION_BUCKET_NAME: ${self:custom.settings.egressNotificationBucketName}
     APP_EGRESS_NOTIFICATION_SNS_TOPIC_ARN: ${self:custom.settings.egressNotificationSnsTopicArn}
+    APP_PLUGIN_CONFIG: ${self:custom.settings.pluginConfig}
 
 workflowLoopRunner:
   handler: src/lambdas/workflow-loop-runner/handler.handler

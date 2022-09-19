@@ -12,7 +12,6 @@
  *  express or implied. See the License for the specific language governing
  *  permissions and limitations under the License.
  */
-
 import withAuth from '@aws-ee/base-ui/dist/withAuth';
 
 import HelloPage from '../parts/hello/HelloPage';
@@ -51,7 +50,11 @@ function registerRoutes(routesMap, { location, appContext }) {
 
   // Register additional routes and their React Components as per your solution requirements
 
-  const routes = new Map([...routesMap, ['/hello', withAuth(HelloPage)], ['/pcluster', withAuth(PclusterPage)]]);
+  const routes = new Map([
+    ...routesMap,
+    ['/hello', withAuth(HelloPage)],
+    ['/pcluster', withAuth(PclusterPage)]
+  ]);
 
   // DO NOT forget to return routes here. If you do not return here, no routes will be configured in React router
   return routes;
@@ -60,6 +63,7 @@ function registerRoutes(routesMap, { location, appContext }) {
 // eslint-disable-next-line no-unused-vars
 function getDefaultRouteLocation({ location, appContext }) {
   // If you want to override the default route location, do it here
+  const pclusterStore = appContext.pclusterStore;
 }
 
 const plugin = {

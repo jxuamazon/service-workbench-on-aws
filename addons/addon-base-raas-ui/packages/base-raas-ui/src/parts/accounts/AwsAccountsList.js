@@ -51,6 +51,7 @@ class AwsAccountsList extends React.Component {
   }
 
   componentWillUnmount() {
+    console.log("88888888888888888", this);
     const accountsStore = this.props.accountsStore;
     const awsAccountsStore = this.props.awsAccountsStore;
     accountsStore.stopHeartbeat();
