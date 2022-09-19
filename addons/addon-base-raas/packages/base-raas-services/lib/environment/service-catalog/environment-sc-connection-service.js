@@ -18,8 +18,8 @@ let fetch = require('node-fetch');
 const crypto = require('crypto');
 const NodeRSA = require('node-rsa');
 const querystring = require('querystring');
-const Service = require('@aws-ee/base-services-container/lib/service');
-const { retry, linearInterval } = require('@aws-ee/base-services/lib/helpers/utils');
+const Service = require('@amzn/base-services-container/lib/service');
+const { retry, linearInterval } = require('@amzn/base-services/lib/helpers/utils');
 const sshConnectionInfoSchema = require('../../schema/ssh-connection-info-sc');
 const { connectionScheme } = require('./environment-sc-connection-enum');
 const { cfnOutputsToConnections } = require('./helpers/connections-util');
@@ -28,6 +28,10 @@ const { cfnOutputsToConnections } = require('./helpers/connections-util');
 if (typeof fetch !== 'function' && fetch.default && typeof fetch.default === 'function') {
   fetch = fetch.default;
 }
+
+const settingKeys = {
+  restrictAdminWorkspaceConnection: 'restrictAdminWorkspaceConnection',
+};
 
 class EnvironmentScConnectionService extends Service {
   constructor() {
@@ -92,8 +96,9 @@ class EnvironmentScConnectionService extends Service {
       'pluginRegistryService',
     ]);
     // The following will succeed only if the user has permissions to access the specified environment
-    const { outputs, projectId } = await environmentScService.mustFind(requestContext, { id: envId });
-
+    const { outputs, projectId, createdBy } = await environmentScService.mustFind(requestContext, { id: envId });
+    // Restrict the admin to access workspace not owned by them.
+    this.verifyAccess(requestContext, createdBy);
     // Verify environment is linked to an AppStream project when application has AppStream enabled
     await environmentScService.verifyAppStreamConfig(requestContext, projectId);
 
@@ -122,6 +127,20 @@ class EnvironmentScConnectionService extends Service {
       }),
     );
     return adjustedConnections;
+  }
+
+  verifyAccess(requestContext, createdBy) {
+    const restrictAdminWorkspaceConnection =
+      this.settings.getBoolean(settingKeys.restrictAdminWorkspaceConnection) || false;
+    if (!restrictAdminWorkspaceConnection) return true;
+
+    const uid = _.get(requestContext, 'principalIdentifier.uid');
+    const isAdmin = _.get(requestContext, 'principal.isAdmin');
+    if (isAdmin && uid !== createdBy) {
+      throw this.boom.notFound(`You do not have access to other user's workspace`, true);
+    }
+
+    return true;
   }
 
   async findConnection(requestContext, envId, connectionId) {
@@ -383,46 +402,54 @@ class EnvironmentScConnectionService extends Service {
 
   async createPrivateSageMakerUrl(requestContext, envId, connection, presign_retries = 10) {
     const lockService = await this.service('lockService');
-    const signedURL = await lockService.tryWriteLockAndRun({ id: `${envId}presign` }, async () => {
-      if (!(_.toLower(_.get(connection, 'type', '')) === 'sagemaker')) {
-        throw this.boom.badRequest(
-          `Cannot generate presigned URL for non-sagemaker connection ${connection.type}`,
-          true,
-        );
-      }
-      const environmentScService = await this.service('environmentScService');
-      const iam = await environmentScService.getClientSdkWithEnvMgmtRole(
-        requestContext,
-        { id: envId },
-        { clientName: 'IAM', options: { apiVersion: '2017-07-24' } },
-      );
-      const currentPolicyResponse = await this.getCurrentRolePolicy(iam, connection);
-      await this.updateRoleToIncludeCurrentIP(iam, connection, currentPolicyResponse);
-      const createPresignedURLFn = async () => {
-        const stsEnvMgmt = await environmentScService.getClientSdkWithEnvMgmtRole(
+    let signedURL = '';
+    try {
+      signedURL = await lockService.tryWriteLockAndRun({ id: `${envId}presign` }, async () => {
+        if (!(_.toLower(_.get(connection, 'type', '')) === 'sagemaker')) {
+          throw this.boom.badRequest(
+            `Cannot generate presigned URL for non-sagemaker connection ${connection.type}`,
+            true,
+          );
+        }
+        const environmentScService = await this.service('environmentScService');
+        const iam = await environmentScService.getClientSdkWithEnvMgmtRole(
           requestContext,
           { id: envId },
-          { clientName: 'STS', options: { apiVersion: '2017-07-24' } },
+          { clientName: 'IAM', options: { apiVersion: '2017-07-24' } },
         );
-        const sageMakerResponse = await this.createPresignedURL(stsEnvMgmt, connection);
-        return sageMakerResponse;
-      };
-      try {
-        // Give sufficient number of retries to create presigned URL.
-        // This is needed because IAM role takes a while to propagate
-        // call with a linear strategy where we wait 2 seconds between retries
-        // This makes it 20 seconds with default of 10 retries
-        const sageMakerResponse = await retry(createPresignedURLFn, presign_retries, () => linearInterval(1, 2000));
-        return _.get(sageMakerResponse, 'AuthorizedUrl');
-      } catch (error) {
-        throw this.boom.internalError(`Could not generate presigned URL`, true).cause(error);
-      } finally {
-        // restore the original policy document. This ensures that caller IP address which was responsible for
-        // creating the presigned URL doesn't have access
-        const oldPolicyDocument = decodeURIComponent(currentPolicyResponse.PolicyDocument);
-        await this.putRolePolicy(iam, connection, oldPolicyDocument);
+        const currentPolicyResponse = await this.getCurrentRolePolicy(iam, connection);
+        await this.updateRoleToIncludeCurrentIP(iam, connection, currentPolicyResponse);
+        const createPresignedURLFn = async () => {
+          const stsEnvMgmt = await environmentScService.getClientSdkWithEnvMgmtRole(
+            requestContext,
+            { id: envId },
+            { clientName: 'STS', options: { apiVersion: '2017-07-24' } },
+          );
+          const sageMakerResponse = await this.createPresignedURL(stsEnvMgmt, connection);
+          return sageMakerResponse;
+        };
+        try {
+          // Give sufficient number of retries to create presigned URL.
+          // This is needed because IAM role takes a while to propagate
+          // call with a linear strategy where we wait 2 seconds between retries
+          // This makes it 20 seconds with default of 10 retries
+          const sageMakerResponse = await retry(createPresignedURLFn, presign_retries, () => linearInterval(1, 2000));
+          return _.get(sageMakerResponse, 'AuthorizedUrl');
+        } catch (error) {
+          throw this.boom.internalError(`Could not generate presigned URL`, true).cause(error);
+        } finally {
+          // restore the original policy document. This ensures that caller IP address which was responsible for
+          // creating the presigned URL doesn't have access
+          const oldPolicyDocument = decodeURIComponent(currentPolicyResponse.PolicyDocument);
+          await this.putRolePolicy(iam, connection, oldPolicyDocument);
+        }
+      });
+    } catch (e) {
+      if (this.boom.is(e, 'internalError') && e.message === 'Could not obtain a lock') {
+        throw this.boom.tooManyRequests('Please wait 30 seconds before requesting Sagemaker URL', true);
       }
-    });
+      throw e;
+    }
     return signedURL;
   }
 

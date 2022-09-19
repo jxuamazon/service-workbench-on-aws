@@ -19,16 +19,16 @@ import _ from 'lodash';
 import { computed, decorate } from 'mobx';
 import { observer, inject } from 'mobx-react';
 import { Header, Icon, Segment } from 'semantic-ui-react';
-import { swallowError } from '@aws-ee/base-ui/dist/helpers/utils';
+import { swallowError } from '@amzn/base-ui/dist/helpers/utils';
 import {
   isStoreLoading,
   isStoreError,
   isStoreReady,
   isStoreEmpty,
   stopHeartbeat,
-} from '@aws-ee/base-ui/dist/models/BaseStore';
-import BasicProgressPlaceholder from '@aws-ee/base-ui/dist/parts/helpers/BasicProgressPlaceholder';
-import ErrorBox from '@aws-ee/base-ui/dist/parts/helpers/ErrorBox';
+} from '@amzn/base-ui/dist/models/BaseStore';
+import BasicProgressPlaceholder from '@amzn/base-ui/dist/parts/helpers/BasicProgressPlaceholder';
+import ErrorBox from '@amzn/base-ui/dist/parts/helpers/ErrorBox';
 
 import StudyRow from './StudyRow';
 import { categories } from '../../models/studies/categories';
@@ -55,6 +55,10 @@ class StudiesTab extends React.Component {
 
   get canCreateStudy() {
     return _.get(this.props.userStore, 'user.capabilities.canCreateStudy', true) && this.hasProjects;
+  }
+
+  get getUserRole() {
+    return _.get(this.props.userStore, 'user.userRole', true);
   }
 
   get canSelectStudy() {
@@ -96,10 +100,11 @@ class StudiesTab extends React.Component {
   renderContent() {
     const studiesStore = this.studiesStore;
     const isSelectable = this.canSelectStudy;
+    const getUserRole = this.getUserRole;
     return (
       <div className="mt3 mr0 ml0">
         {studiesStore.list.map(study => (
-          <StudyRow key={study.id} study={study} isSelectable={isSelectable} />
+          <StudyRow key={study.id} study={study} userRole={getUserRole} isSelectable={isSelectable} />
         ))}
       </div>
     );

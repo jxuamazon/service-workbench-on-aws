@@ -15,8 +15,8 @@
 
 import _ from 'lodash';
 import { applySnapshot, detach, getSnapshot, types } from 'mobx-state-tree';
-import { addUser, updateUser, getUsers } from '@aws-ee/base-ui/dist/helpers/api';
-import { BaseStore } from '@aws-ee/base-ui/dist/models/BaseStore';
+import { addUser, updateUser, getUsers } from '@amzn/base-ui/dist/helpers/api';
+import { BaseStore } from '@amzn/base-ui/dist/models/BaseStore';
 
 import { deleteUser, addUsers, updateUserApplication } from '../../helpers/api';
 import { User } from './User';
@@ -33,7 +33,15 @@ const UsersStore = BaseStore.named('UsersStore')
 
     return {
       async doLoad() {
-        const users = (await getUsers()) || [];
+        let users = [];
+        try {
+          users = await getUsers();
+        } catch (e) {
+          console.error(
+            'Could not get users. This is expected if you have a Guest role, but is not expected behavior for any other roles',
+            e,
+          );
+        }
         self.runInAction(() => {
           users.forEach(user => {
             const userModel = User.create(user);

@@ -15,8 +15,8 @@
  */
 
 const _ = require('lodash');
-const Service = require('@aws-ee/base-services-container/lib/service');
-const { runAndCatch } = require('@aws-ee/base-services/lib/helpers/utils');
+const Service = require('@amzn/base-services-container/lib/service');
+const { runAndCatch } = require('@amzn/base-services/lib/helpers/utils');
 
 const { buildTaggingXml } = require('../helpers/aws-tags');
 const { isInternalResearcher, isAdmin, isSystem } = require('../helpers/is-role');
@@ -42,6 +42,7 @@ const settingKeys = {
   accountIdIndexName: 'dbStudiesAccountIdIndex',
   studyDataBucketName: 'studyDataBucketName',
   enableEgressStore: 'enableEgressStore',
+  disableStudyUploadByResearcher: 'disableStudyUploadByResearcher',
 };
 
 class StudyService extends Service {
@@ -287,6 +288,14 @@ class StudyService extends Service {
     if (!(isInternalResearcher(requestContext) || isAdmin(requestContext))) {
       throw this.boom.forbidden('Only admin and internal researcher are authorized to create studies.', true);
     }
+
+    // This flag was introduced to restrict Researcher action to create study/org studies
+    const disableStudyUploadByResearcher =
+      this.settings.getBoolean(settingKeys.disableStudyUploadByResearcher) || false;
+    if (disableStudyUploadByResearcher && !isAdmin(requestContext)) {
+      throw this.boom.forbidden('Only admin are authorized to create studies.', true);
+    }
+
     if (isOpenData(rawStudyEntity) && !isSystem(requestContext)) {
       throw this.boom.forbidden('Only the system can create Open Data studies.', true);
     }
@@ -621,7 +630,7 @@ class StudyService extends Service {
    * Note: In order for browser uplaod to work, the destination bucket will need to have an appropriate CORS policy configured.
    * @see https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutBucketCors.html
    *
-   * @param {Object} requestContext the request context provided by @aws-ee/base-services-container/lib/request-context
+   * @param {Object} requestContext the request context provided by @amzn/base-services-container/lib/request-context
    * @param {string} studyId the ID of the study in which the uploaded files should be shored.
    * @param {string} filenames the filenames that will be used for the upload.
    * @param {CreatePresignedPostOptions} options additional options.
@@ -632,6 +641,17 @@ class StudyService extends Service {
    * @returns {Promise<AWS.S3.PresignedPost>} the url and fields to use when performing the upload
    */
   async createPresignedPostRequests(requestContext, studyId, filenames, encrypt = true, multiPart = true) {
+    // This flag was introduced for the Researcher to restrict the uploading
+    const disableStudyUploadByResearcher =
+      this.settings.getBoolean(settingKeys.disableStudyUploadByResearcher) || false;
+
+    if (disableStudyUploadByResearcher && !isAdmin(requestContext)) {
+      throw this.boom.forbidden('Only admin are authorized to upload files.', true);
+    }
+    if (!disableStudyUploadByResearcher && !(isInternalResearcher(requestContext) || isAdmin(requestContext))) {
+      throw this.boom.forbidden('Only admin and internal researcher are authorized to upload files.', true);
+    }
+
     // Get study details and check permissions
     const uid = _.get(requestContext, 'principalIdentifier.uid');
 

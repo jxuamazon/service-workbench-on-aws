@@ -14,29 +14,29 @@
  */
 
 const _ = require('lodash');
-const ServicesContainer = require('@aws-ee/base-services-container/lib/services-container');
-const JsonSchemaValidationService = require('@aws-ee/base-services/lib/json-schema-validation-service');
-const AwsService = require('@aws-ee/base-services/lib/aws/aws-service');
-const { getSystemRequestContext } = require('@aws-ee/base-services/lib/helpers/system-context');
+const ServicesContainer = require('@amzn/base-services-container/lib/services-container');
+const JsonSchemaValidationService = require('@amzn/base-services/lib/json-schema-validation-service');
+const AwsService = require('@amzn/base-services/lib/aws/aws-service');
+const { getSystemRequestContext } = require('@amzn/base-services/lib/helpers/system-context');
 
-jest.mock('@aws-ee/base-services/lib/db-service');
-jest.mock('@aws-ee/base-services/lib/logger/logger-service');
-jest.mock('@aws-ee/base-services/lib/audit/audit-writer-service');
-jest.mock('@aws-ee/base-services/lib/settings/env-settings-service');
-jest.mock('@aws-ee/base-services/lib/plugin-registry/plugin-registry-service');
-jest.mock('@aws-ee/base-services/lib/s3-service');
-jest.mock('@aws-ee/base-services/lib/lock/lock-service');
+jest.mock('@amzn/base-services/lib/db-service');
+jest.mock('@amzn/base-services/lib/logger/logger-service');
+jest.mock('@amzn/base-services/lib/audit/audit-writer-service');
+jest.mock('@amzn/base-services/lib/settings/env-settings-service');
+jest.mock('@amzn/base-services/lib/plugin-registry/plugin-registry-service');
+jest.mock('@amzn/base-services/lib/s3-service');
+jest.mock('@amzn/base-services/lib/lock/lock-service');
 jest.mock('../../user/user-service');
 jest.mock('../../project/project-service');
 
-const Logger = require('@aws-ee/base-services/lib/logger/logger-service');
-const LockService = require('@aws-ee/base-services/lib/lock/lock-service');
-const DbServiceMock = require('@aws-ee/base-services/lib/db-service');
-const AuthService = require('@aws-ee/base-services/lib/authorization/authorization-service');
-const AuditServiceMock = require('@aws-ee/base-services/lib/audit/audit-writer-service');
-const SettingsServiceMock = require('@aws-ee/base-services/lib/settings/env-settings-service');
-const PluginRegistryService = require('@aws-ee/base-services/lib/plugin-registry/plugin-registry-service');
-const S3ServiceMock = require('@aws-ee/base-services/lib/s3-service');
+const Logger = require('@amzn/base-services/lib/logger/logger-service');
+const LockService = require('@amzn/base-services/lib/lock/lock-service');
+const DbServiceMock = require('@amzn/base-services/lib/db-service');
+const AuthService = require('@amzn/base-services/lib/authorization/authorization-service');
+const AuditServiceMock = require('@amzn/base-services/lib/audit/audit-writer-service');
+const SettingsServiceMock = require('@amzn/base-services/lib/settings/env-settings-service');
+const PluginRegistryService = require('@amzn/base-services/lib/plugin-registry/plugin-registry-service');
+const S3ServiceMock = require('@amzn/base-services/lib/s3-service');
 const ProjectServiceMock = require('../../project/project-service');
 const UserService = require('../../user/user-service');
 const StudyPermissionService = require('../study-permission-service');
@@ -1391,6 +1391,161 @@ describe('studyService', () => {
 
       // CHECK
       expect(result).toBeFalsy();
+    });
+  });
+
+  describe('Create Study', () => {
+    it('should fail when the researcher is tries to create study', async () => {
+      const studyData = {
+        description: 'Example study 1',
+        id: 'study-2',
+        name: 'Study 1',
+        resources: [
+          {
+            arn: 'arn:aws:s3:::study1',
+          },
+        ],
+        sha: '19d5b9z735712185ca1c691143t458a7aa2b7f69',
+        category: 'My Studies',
+      };
+      // BUILD
+      const uid = 'u-currentUserId';
+      const requestContext = {
+        principalIdentifier: { uid },
+        principal: { userRole: 'researcher', status: 'active' },
+      };
+      service._settings = {
+        getBoolean: settingName => {
+          if (settingName === 'disableStudyUploadByResearcher') {
+            return true;
+          }
+          return undefined;
+        },
+      };
+      // OPERATE
+      await expect(service.create(requestContext, studyData)).rejects.toThrow(
+        // CHECK
+        expect.objectContaining({ message: 'Only admin are authorized to create studies.' }),
+      );
+    });
+
+    it('should pass when the researcher is tries to create study', async () => {
+      service._settings = {
+        getBoolean: settingName => {
+          if (settingName === 'disableStudyUploadByResearcher') {
+            return false;
+          }
+          return undefined;
+        },
+      };
+      const sid = 'doppelganger';
+      const uid = 'u-currentUserId';
+      const requestContext = {
+        principal: { userRole: 'admin', status: 'active' },
+        principalIdentifier: { uid: '_system_' },
+      };
+      const studyEntity = {
+        id: sid,
+        category: 'My Studies',
+        accessType: 'readwrite',
+        projectId: 'p1',
+      };
+      projectService.verifyUserProjectAssociation.mockImplementationOnce(() => true);
+      let pKey1;
+      let pKey2;
+      dbService.table.key = jest
+        .fn()
+        .mockImplementationOnce(({ id }) => {
+          pKey1 = id;
+          return dbService.table;
+        })
+        .mockImplementationOnce(({ id }) => {
+          pKey2 = id;
+          return dbService.table;
+        })
+        .mockImplementationOnce(() => {
+          // Covers the call to get the User PermissionsEntity
+          return dbService.table;
+        })
+        .mockImplementationOnce(() => {
+          // Covers the call to update the User PermissionsEntity
+          return dbService.table;
+        });
+
+      dbService.table.update = jest
+        .fn()
+        .mockImplementationOnce(() => {
+          if (pKey1 !== sid) return undefined;
+          return studyEntity;
+        })
+        .mockImplementationOnce(() => {
+          if (pKey2 !== `Study:${sid}`) return undefined;
+          return { adminUsers: [uid] };
+        });
+
+      await expect(service.create(requestContext, studyEntity)).resolves.toStrictEqual({
+        ...studyEntity,
+        status: 'reachable',
+        permissions: { ...getEmptyStudyPermissions(), adminUsers: [uid] },
+      });
+    });
+  });
+
+  describe('createPresignedPostRequests', () => {
+    it('should fail when the researcher is tries to upload files', async () => {
+      // BUILD
+      const uid = 'u-currentUserId';
+      const filenames = [];
+      const encrypt = true;
+      const multiPart = true;
+      const requestContext = {
+        principalIdentifier: { uid },
+        principal: { userRole: 'researcher', status: 'active' },
+      };
+      service._settings = {
+        getBoolean: settingName => {
+          if (settingName === 'disableStudyUploadByResearcher') {
+            return true;
+          }
+          return undefined;
+        },
+      };
+      // OPERATE
+      await expect(
+        service.createPresignedPostRequests(requestContext, 'study-2', filenames, encrypt, multiPart),
+      ).rejects.toThrow(
+        // CHECK
+        expect.objectContaining({ message: 'Only admin are authorized to upload files.' }),
+      );
+    });
+
+    it('should pass when the researcher is tries to upload files', async () => {
+      // BUILD
+      const uid = 'u-currentUserId';
+      const filenames = [];
+      const encrypt = true;
+      const multiPart = true;
+      const requestContext = {
+        principalIdentifier: { uid },
+        principal: { userRole: 'researcher', status: 'active' },
+      };
+      const studyId = 'study-2';
+      service._settings = {
+        getBoolean: settingName => {
+          if (settingName === 'disableStudyUploadByResearcher') {
+            return false;
+          }
+          return undefined;
+        },
+      };
+      // OPERATE
+      await expect(
+        service.createPresignedPostRequests(requestContext, studyId, filenames, encrypt, multiPart),
+      ).rejects.toThrow(
+        // CHECK
+        // eslint-disable-next-line
+        expect.objectContaining({ message: `Study with id \"study-2\" does not exist` }),
+      );
     });
   });
 });

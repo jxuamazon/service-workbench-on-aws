@@ -13,26 +13,26 @@
  *  permissions and limitations under the License.
  */
 const _ = require('lodash');
-const ServicesContainer = require('@aws-ee/base-services-container/lib/services-container');
+const ServicesContainer = require('@amzn/base-services-container/lib/services-container');
 
 // Mocked services
-jest.mock('@aws-ee/base-services/lib/db-service');
-jest.mock('@aws-ee/base-services/lib/logger/logger-service');
-jest.mock('@aws-ee/base-services/lib/settings/env-settings-service');
-jest.mock('@aws-ee/base-services/lib/plugin-registry/plugin-registry-service');
-jest.mock('@aws-ee/base-services/lib/audit/audit-writer-service');
-jest.mock('@aws-ee/base-services/lib/lock/lock-service');
+jest.mock('@amzn/base-services/lib/db-service');
+jest.mock('@amzn/base-services/lib/logger/logger-service');
+jest.mock('@amzn/base-services/lib/settings/env-settings-service');
+jest.mock('@amzn/base-services/lib/plugin-registry/plugin-registry-service');
+jest.mock('@amzn/base-services/lib/audit/audit-writer-service');
+jest.mock('@amzn/base-services/lib/lock/lock-service');
 jest.mock('../../user/user-service');
 
-const Aws = require('@aws-ee/base-services/lib/aws/aws-service');
-const Logger = require('@aws-ee/base-services/lib/logger/logger-service');
-const LockService = require('@aws-ee/base-services/lib/lock/lock-service');
-const DbService = require('@aws-ee/base-services/lib/db-service');
-const PluginRegistryService = require('@aws-ee/base-services/lib/plugin-registry/plugin-registry-service');
-const SettingsService = require('@aws-ee/base-services/lib/settings/env-settings-service');
-const AuthService = require('@aws-ee/base-services/lib/authorization/authorization-service');
-const AuditService = require('@aws-ee/base-services/lib/audit/audit-writer-service');
-const JsonSchemaValidationService = require('@aws-ee/base-services/lib/json-schema-validation-service');
+const Aws = require('@amzn/base-services/lib/aws/aws-service');
+const Logger = require('@amzn/base-services/lib/logger/logger-service');
+const LockService = require('@amzn/base-services/lib/lock/lock-service');
+const DbService = require('@amzn/base-services/lib/db-service');
+const PluginRegistryService = require('@amzn/base-services/lib/plugin-registry/plugin-registry-service');
+const SettingsService = require('@amzn/base-services/lib/settings/env-settings-service');
+const AuthService = require('@amzn/base-services/lib/authorization/authorization-service');
+const AuditService = require('@amzn/base-services/lib/audit/audit-writer-service');
+const JsonSchemaValidationService = require('@amzn/base-services/lib/json-schema-validation-service');
 const UserService = require('../../user/user-service');
 const StudyPermissionService = require('../study-permission-service');
 
@@ -43,6 +43,7 @@ describe('StudyPermissionService', () => {
   let service;
   let dbService;
   let lockService;
+  let userService;
 
   beforeEach(async () => {
     // Initialize services container and register dependencies
@@ -64,6 +65,7 @@ describe('StudyPermissionService', () => {
     service = await container.find('studyPermissionService');
     dbService = await container.find('dbService');
     lockService = await container.find('lockService');
+    userService = await container.find('userService');
   });
 
   describe('findStudyPermissions', () => {
@@ -734,6 +736,47 @@ describe('StudyPermissionService', () => {
       // CHECK
       expect(service.findStudyPermissions).toHaveBeenCalledWith(requestContext, studyEntity);
       expect(service.assertValidUsers).toHaveBeenCalledWith(['uid-1']);
+    });
+  });
+
+  describe('assertValidUsers', () => {
+    it('should fail if the admin username is present in the userIds, when APP_DISABLE_ADMIN_BYOB_SELF_ASSIGNMENT is set to true', async () => {
+      // BUILD
+      const username = 'narendran.ranganathan@relevancelab.com';
+      const userIds = ['u-moQvVGabqpcaypegCqwso'];
+      userService.mustFindUser = jest.fn(() => {
+        return { isAdmin: true, status: 'active', userRole: 'admin', username };
+      });
+      service._settings = {
+        getBoolean: settingName => {
+          if (settingName === 'disableAdminBYOBSelfAssignment') {
+            return true;
+          }
+          return undefined;
+        },
+      };
+      await expect(service.assertValidUsers(userIds)).rejects.toThrow(
+        expect.objectContaining({ message: `User ${username} must be active and with a researcher role` }),
+      );
+    });
+
+    it('should pass if the admin username is present in the userIds, when APP_DISABLE_ADMIN_BYOB_SELF_ASSIGNMENT is set to false', async () => {
+      // BUILD
+      const username = 'narendran.ranganathan@relevancelab.com';
+      const userIds = ['u-moQvVGabqpcaypegCqwso'];
+      userService.mustFindUser = jest.fn(() => {
+        return { isAdmin: true, status: 'active', userRole: 'admin', username };
+      });
+      service._settings = {
+        getBoolean: settingName => {
+          if (settingName === 'disableAdminBYOBSelfAssignment') {
+            return false;
+          }
+          return undefined;
+        },
+      };
+      const response = await service.assertValidUsers(userIds);
+      expect(response).toBeUndefined();
     });
   });
 });

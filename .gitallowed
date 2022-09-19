@@ -11,3 +11,5 @@ main/solution/ui/src/css/semantic.min.css
 012345678998
 123456789012
 333333333333
+
+addons/addon-base-raas/packages/base-raas-services/lib/environment/service-catalog/__tests__/environment-sc-connection-service.test.js

@@ -12,7 +12,8 @@
  *  express or implied. See the License for the specific language governing
  *  permissions and limitations under the License.
  */
-import withAuth from '@aws-ee/base-ui/dist/withAuth';
+
+import withAuth from '@amzn/base-ui/dist/withAuth';
 
 import HelloPage from '../parts/hello/HelloPage';
 import PclusterPage from '../parts/pcluster/PclusterPage';

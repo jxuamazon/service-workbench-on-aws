@@ -20,19 +20,19 @@ import { observer, inject } from 'mobx-react';
 import { withRouter } from 'react-router-dom';
 import { Button, Segment, Header, Divider, Label } from 'semantic-ui-react';
 
-import { swallowError } from '@aws-ee/base-ui/dist/helpers/utils';
-import Form from '@aws-ee/base-ui/dist/parts/helpers/fields/Form';
-import DropDown from '@aws-ee/base-ui/dist/parts/helpers/fields/DropDown';
-import Input from '@aws-ee/base-ui/dist/parts/helpers/fields/Input';
-import TextArea from '@aws-ee/base-ui/dist/parts/helpers/fields/TextArea';
-import SelectionButtons from '@aws-ee/base-ui/dist/parts/helpers/fields/SelectionButtons';
-import YesNo from '@aws-ee/base-ui/dist/parts/helpers/fields/YesNo';
-import { gotoFn } from '@aws-ee/base-ui/dist/helpers/routing';
+import { swallowError } from '@amzn/base-ui/dist/helpers/utils';
+import Form from '@amzn/base-ui/dist/parts/helpers/fields/Form';
+import DropDown from '@amzn/base-ui/dist/parts/helpers/fields/DropDown';
+import Input from '@amzn/base-ui/dist/parts/helpers/fields/Input';
+import TextArea from '@amzn/base-ui/dist/parts/helpers/fields/TextArea';
+import SelectionButtons from '@amzn/base-ui/dist/parts/helpers/fields/SelectionButtons';
+import YesNo from '@amzn/base-ui/dist/parts/helpers/fields/YesNo';
+import { gotoFn } from '@amzn/base-ui/dist/helpers/routing';
 
 import { regionOptions } from '../../../models/constants/aws-regions';
 import { encryptionOptions } from '../../../models/constants/bucket';
 import { getRegisterStudyForm } from '../../../models/forms/RegisterStudyForm';
-import { enableEgressStore } from '../../../helpers/settings';
+import { enableEgressStore, disableAdminBYOBSelfAssignment } from '../../../helpers/settings';
 
 const fieldRuleKey = (container, name) => `${container.key}-${name}`;
 
@@ -72,6 +72,7 @@ class InputStep extends React.Component {
     const result = [];
     _.forEach(list, user => {
       if (!user.isActive) return;
+      if ((user.isAdmin || user.userRole === 'admin') && disableAdminBYOBSelfAssignment === true) return;
       if (user.isAdmin || user.isInternalResearcher || user.userRole === 'admin') {
         result.push({
           key: user.id,

@@ -14,7 +14,7 @@
  */
 
 const _ = require('lodash');
-const Service = require('@aws-ee/base-services-container/lib/service');
+const Service = require('@amzn/base-services-container/lib/service');
 
 const { runAndCatch, generateId } = require('../helpers/utils');
 const { toUserNamespace } = require('./helpers/user-namespace');
@@ -331,6 +331,8 @@ class UserService extends Service {
   }
 
   async listUsers(requestContext, { fields = [] } = {}) {
+    await this.assertAuthorized(requestContext, { action: 'list', conditions: [this.allowAuthorized] });
+
     const dbService = await this.service('dbService');
     const table = this.settings.get(settingKeys.tableName);
     // TODO: Handle pagination

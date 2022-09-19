@@ -13,33 +13,34 @@
  *  permissions and limitations under the License.
  */
 
-const ServicesContainer = require('@aws-ee/base-services-container/lib/services-container');
-const JsonSchemaValidationService = require('@aws-ee/base-services/lib/json-schema-validation-service');
-const Logger = require('@aws-ee/base-services/lib/logger/logger-service');
+const ServicesContainer = require('@amzn/base-services-container/lib/services-container');
+const JsonSchemaValidationService = require('@amzn/base-services/lib/json-schema-validation-service');
+const Logger = require('@amzn/base-services/lib/logger/logger-service');
 const crypto = require('crypto');
+const Boom = require('@amzn/base-services-container/lib/boom');
 
 // Mocked dependencies
-const AwsService = require('@aws-ee/base-services/lib/aws/aws-service');
+const AwsService = require('@amzn/base-services/lib/aws/aws-service');
 
 const AWSMock = require('aws-sdk-mock');
 
-jest.mock('@aws-ee/base-services/lib/lock/lock-service');
-const LockServiceMock = require('@aws-ee/base-services/lib/lock/lock-service');
+jest.mock('@amzn/base-services/lib/lock/lock-service');
+const LockServiceMock = require('@amzn/base-services/lib/lock/lock-service');
 
-jest.mock('@aws-ee/base-api-services/lib/jwt-service');
-const JwtService = require('@aws-ee/base-api-services/lib/jwt-service');
+jest.mock('@amzn/base-api-services/lib/jwt-service');
+const JwtService = require('@amzn/base-api-services/lib/jwt-service');
 
-jest.mock('@aws-ee/key-pair-mgmt-services/lib/key-pair/key-pair-service');
-const KeyPairServiceMock = require('@aws-ee/key-pair-mgmt-services/lib/key-pair/key-pair-service');
+jest.mock('@amzn/key-pair-mgmt-services/lib/key-pair/key-pair-service');
+const KeyPairServiceMock = require('@amzn/key-pair-mgmt-services/lib/key-pair/key-pair-service');
 
-jest.mock('@aws-ee/base-services/lib/settings/env-settings-service');
-const SettingsServiceMock = require('@aws-ee/base-services/lib/settings/env-settings-service');
+jest.mock('@amzn/base-services/lib/settings/env-settings-service');
+const SettingsServiceMock = require('@amzn/base-services/lib/settings/env-settings-service');
 
-jest.mock('@aws-ee/base-services/lib/audit/audit-writer-service');
-const AuditServiceMock = require('@aws-ee/base-services/lib/audit/audit-writer-service');
+jest.mock('@amzn/base-services/lib/audit/audit-writer-service');
+const AuditServiceMock = require('@amzn/base-services/lib/audit/audit-writer-service');
 
-jest.mock('@aws-ee/base-services/lib/plugin-registry/plugin-registry-service');
-const PluginRegistryServiceMock = require('@aws-ee/base-services/lib/plugin-registry/plugin-registry-service');
+jest.mock('@amzn/base-services/lib/plugin-registry/plugin-registry-service');
+const PluginRegistryServiceMock = require('@amzn/base-services/lib/plugin-registry/plugin-registry-service');
 
 jest.mock('../../environment-dns-service.js');
 const EnvironmentDnsServiceMock = require('../../environment-dns-service.js');
@@ -55,15 +56,7 @@ jest.mock('node-rsa', () =>
     importKey: jest.fn(() => ({
       exportKey: jest.fn(
         // This is a random key generated for test purposes
-        () => `-----BEGIN PUBLIC KEY-----
-MIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQBLbcdPzgSh+4OkzNse6UaG
-SPI3ylo406TcNKwrsKyDMfU3mLyPCVuFCrzVheEn8PYZMNWE5mCorf2RMAiYGXOW
-P35i2J59Oa04PYvml/p3kSX7K1UdtkI6MXtYdNLmt4qbhCK6tWy6Cau8zzUOmLT6
-YUOSvlAqpm3Ed9LPfRDn3I+EDCfbWWWvkbk3rEUJt0dXYX6UimEDRYyvlzq+abbv
-f+ECYBdiC4KtLuK0K1nqqH/whEGLEwND7DAAwIICuKw5ND4wuJGPaANwXDZKU4ZO
-rEYx9BfKHzYz7SZ07igvEYAJvyaLlMslBonxu+e0wlolbWeUjKUxJdXxCChbT8xB
-AgMBAAE=
------END PUBLIC KEY-----`,
+        () => ``,
       ),
     })),
   })),
@@ -169,7 +162,7 @@ describe('EnvironmentScConnectionService', () => {
       };
       iamMock.putRolePolicy = jest.fn(() => {
         return {
-          promise: () => {},
+          promise: () => { },
         };
       });
 
@@ -279,7 +272,7 @@ describe('EnvironmentScConnectionService', () => {
       });
       iamMock.putRolePolicy = jest.fn(() => {
         return {
-          promise: () => {},
+          promise: () => { },
         };
       });
       stsMock.assumeRole = jest.fn(() => {
@@ -337,6 +330,17 @@ describe('EnvironmentScConnectionService', () => {
       expect(envScService.getClientSdkWithEnvMgmtRole).toHaveBeenCalledTimes(2);
     });
 
+    it('should return too many requests error if request cannot obtain a lock', async () => {
+      // BUILD
+      lockService.tryWriteLockAndRun = jest.fn(() => {
+        throw service.boom.internalError('Could not obtain a lock', true);
+      });
+
+      // OPERATE, CHECK
+      await expect(service.createPrivateSageMakerUrl({}, 'envId1', {})).rejects.toEqual(
+        new Boom().tooManyRequests('Please wait 30 seconds before requesting Sagemaker URL', true),
+      );
+    });
     it('should return private SageMaker URL', async () => {
       // BUILD
       lockService.tryWriteLockAndRun = jest.fn((id, func) => {
@@ -405,7 +409,7 @@ describe('EnvironmentScConnectionService', () => {
       });
       iamMock.putRolePolicy = jest.fn(() => {
         return {
-          promise: () => {},
+          promise: () => { },
         };
       });
       stsMock.assumeRole = jest.fn(() => {
@@ -565,33 +569,7 @@ describe('EnvironmentScConnectionService', () => {
       const credentials = `rstudio-user\nfcc91a0d7cfdef9fea2854f2b8b2c80355c391ca617e08567e6584efe6833948`;
 
       // This is a random key generated for test purposes
-      const privateKeyBuffer = `-----BEGIN RSA PRIVATE KEY-----
-MIIEoQIBAAKCAQBLbcdPzgSh+4OkzNse6UaGSPI3ylo406TcNKwrsKyDMfU3mLyP
-CVuFCrzVheEn8PYZMNWE5mCorf2RMAiYGXOWP35i2J59Oa04PYvml/p3kSX7K1Ud
-tkI6MXtYdNLmt4qbhCK6tWy6Cau8zzUOmLT6YUOSvlAqpm3Ed9LPfRDn3I+EDCfb
-WWWvkbk3rEUJt0dXYX6UimEDRYyvlzq+abbvf+ECYBdiC4KtLuK0K1nqqH/whEGL
-EwND7DAAwIICuKw5ND4wuJGPaANwXDZKU4ZOrEYx9BfKHzYz7SZ07igvEYAJvyaL
-lMslBonxu+e0wlolbWeUjKUxJdXxCChbT8xBAgMBAAECggEAQlu51QOyH69eCUYQ
-IAmp+cmDDoH/Da9kgjX0ohs0KddxnA/LEytwUIM5zb+SbckXOOI1dk4XC07GnUxc
-wzLg9XW2gs9/3zs2oRvEUIGz4CzZ9TYSE6mcagXONevQ/xjJ4DdHNmsV1DVd2SWR
-z92Ymg2nnRnA/USdnRKta8zjapczJpwzUc77z/+Bg96UhoOTWOB4pFBsXhn9ZPpY
-XDM8pTt7TjGgyHiHJM6v5585cnGmi+A3OtqWPrdv4BfBSo2UFEAnKzwb/d2OryXm
-6m3yX+CqDFrL6hHBPx+GVyrjh2qy2z9HHmyMegCN7Kc/bk7nBpPuYd//yMcGaZSv
-ICjqgQKBgQCPwQx4WZVwMSYdgY7ojts/3s4ppP9Gvfnm5aTVc3REEY5ERXG113ug
-VCbT1h8BgF0nWx5S2bX7QBKzwVWEyCqaVoaHJXNlXBtdCK8VaxKCHb/ZNLpxjD57
-IEBA7WsFH6tZ+IQHXeOy/17pwXzwKggXcLxSqTGj1cqLgNR1xrTVzQKBgQCGUzeN
-M9J2TC3LgfgrQrxfJxLGQxWGZzmxqE9CaulnP9/rn21EQzriUveOLqY3unyuKipr
-v6uZU2QzgLULWxjkX/parKCtoVYvWmgVihana3v1J4tz/k46M+O3f/nxWyNApWpI
-f+gaf3cRnpY5VnKykp0q/NbJ57SYHr0N4i7cRQKBgEJMRUUIA8yfTjXTd6Y3pFRb
-nHdGWlk06pkblh6/RYLTGerQoDW+MIzr4pBWMyyNF+k7s8uADtbWYQm4A4neiw9t
-ElQn6IV5qkEI7T6SiBGsSLuS/t25UWOVpyyKko3lYjB3VeTT31zBO/PQwZ89s0ek
-PaZd07/8rJIUE2hSATqNAoGABLhh6F1c1PliVpdvoB2NPw7BcyQiWoHAHkUa2+uj
-3hP5i28jyNVP+WoO9vkesDCmdvxWV0j5/75VdBXextJhsozI4GzWjKNxwuI7bB5Z
-I3L8fSXxmZbjKtpt8yHVJ60bNQdbD8cm4d9+0KixALzP9QR/72XJKnkw+HOEEzvS
-h70CgYAbEsXprYGR6z+a89J3h2CHfQpASHin1U4Sn0hxLBFgpZ50ubiYlC88GHRi
-2CHcNtAJtZ2xpIR+94dmpRIXHSd2v2SawzBXUIDw7pvgYI5moqaBXmXYY5ZZHZrI
-jM0re//6SUWx/9VfBLN+6Ul8wcqGR2uCmK/PJpzWYxz0IzhnyA==
------END RSA PRIVATE KEY-----`;
+      const privateKeyBuffer = ``;
 
       // OPERATE
       const result = await service.createConnectionUrl();
@@ -621,6 +599,74 @@ jM0re//6SUWx/9VfBLN+6Ul8wcqGR2uCmK/PJpzWYxz0IzhnyA==
           message: 'Support for this version of RStudio has been deprecated. Please use RStudioV2 environment type',
         }),
       );
+    });
+  });
+
+  describe('verifyAccess', () => {
+    it('Should fail if the admin is try to access the researcher workspace', async () => {
+      // Env is created by the researcher
+      service._settings = {
+        getBoolean: settingName => {
+          if (settingName === 'restrictAdminWorkspaceConnection') {
+            return true;
+          }
+          return undefined;
+        },
+      };
+      const createdBy = 'u-moQvVGabqpcaypegCqwsa'; // researcher uid
+      const projectId = 'Project-2';
+      const requestContext = {
+        principal: { isAdmin: true, status: 'active' },
+        principalIdentifier: { uid: 'u-moQvVGabqpcaypegCqwso' },
+      };
+      try {
+        await service.verifyAccess(requestContext, createdBy, projectId);
+      } catch (err) {
+        expect(err.message).toEqual(`You do not have access to other user's workspace`);
+      }
+    });
+
+    it('Should pass if the admin is try to access his own workspace', async () => {
+      // Env is created by the researcher
+      service._settings = {
+        getBoolean: settingName => {
+          if (settingName === 'restrictAdminWorkspaceConnection') {
+            return true;
+          }
+          return undefined;
+        },
+      };
+      const createdBy = 'u-moQvVGabqpcaypegCqwso'; // researcher uid
+      const projectId = 'Project-2';
+      const requestContext = {
+        principal: { isAdmin: true, status: 'active' },
+        principalIdentifier: { uid: 'u-moQvVGabqpcaypegCqwso' },
+      };
+      try {
+        await service.verifyAccess(requestContext, createdBy, projectId);
+      } catch (err) {
+        expect(err.message).toEqual(`You do not have access to other user's workspace`);
+      }
+    });
+
+    it('Should pass if the admin is try to access the researcher workspace', async () => {
+      // Env is created by the researcher
+      service._settings = {
+        getBoolean: settingName => {
+          if (settingName === 'restrictAdminWorkspaceConnection') {
+            return false;
+          }
+          return undefined;
+        },
+      };
+      const createdBy = 'u-moQvVGabqpcaypegCqwsa'; // researcher uid
+      const projectId = 'Project-2';
+      const requestContext = {
+        principal: { isAdmin: true, status: 'active' },
+        principalIdentifier: { uid: 'u-moQvVGabqpcaypegCqwso' },
+      };
+      const status = await service.verifyAccess(requestContext, createdBy, projectId);
+      expect(status).toEqual(true);
     });
   });
 });

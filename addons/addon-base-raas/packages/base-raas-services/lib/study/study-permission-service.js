@@ -15,14 +15,14 @@
  */
 
 const _ = require('lodash');
-const Service = require('@aws-ee/base-services-container/lib/service');
-const { runAndCatch } = require('@aws-ee/base-services/lib/helpers/utils');
+const Service = require('@amzn/base-services-container/lib/service');
+const { runAndCatch } = require('@amzn/base-services/lib/helpers/utils');
 const {
   allowIfActive,
   allowIfCurrentUserOrAdmin,
   allow,
   deny,
-} = require('@aws-ee/base-services/lib/authorization/authorization-utils');
+} = require('@amzn/base-services/lib/authorization/authorization-utils');
 
 const createSchema = require('../schema/create-study-permissions');
 const updateSchema = require('../schema/update-study-permissions');
@@ -51,6 +51,7 @@ const {
 
 const settingKeys = {
   tableName: 'dbStudyPermissions',
+  disableAdminBYOBSelfAssignment: 'disableAdminBYOBSelfAssignment',
 };
 
 const composeStudyPermissionsKey = studyId => `Study:${studyId}`;
@@ -487,10 +488,14 @@ class StudyPermissionService extends Service {
         const isActive = _.toLower(user.status) === 'active';
         const isResearcher = user.userRole === 'researcher';
         if (!(isActive && (isAdminUser || isResearcher))) {
-          throw this.boom.badRequest(
-            `User ${user.username} must be active and either has the role of admin or the role of researcher`,
-            true,
-          );
+          throw this.boom.badRequest(`User ${user.username} must be active and has to be an admin or researcher`, true);
+        }
+
+        // Admin can assign only a researcher as a study admin in the BYOB feature.
+        const disableAdminBYOBSelfAssignment =
+          this.settings.getBoolean(settingKeys.disableAdminBYOBSelfAssignment) || false;
+        if (disableAdminBYOBSelfAssignment && !(isActive && isResearcher)) {
+          throw this.boom.badRequest(`User ${user.username} must be active and with a researcher role`, true);
         }
       } catch (error) {
         errors.push(error.message);

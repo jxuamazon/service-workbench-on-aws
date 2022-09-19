@@ -13,40 +13,40 @@
  *  permissions and limitations under the License.
  */
 
-const ServicesContainer = require('@aws-ee/base-services-container/lib/services-container');
-const JsonSchemaValidationService = require('@aws-ee/base-services/lib/json-schema-validation-service');
+const ServicesContainer = require('@amzn/base-services-container/lib/services-container');
+const JsonSchemaValidationService = require('@amzn/base-services/lib/json-schema-validation-service');
 
 // Mocked dependencies
 jest.mock('uuid/v1');
 const uuidMock = require('uuid/v1');
 
-jest.mock('@aws-ee/base-services/lib/db-service');
-const DbServiceMock = require('@aws-ee/base-services/lib/db-service');
+jest.mock('@amzn/base-services/lib/db-service');
+const DbServiceMock = require('@amzn/base-services/lib/db-service');
 
-jest.mock('@aws-ee/base-services/lib/authorization/authorization-service');
-const AuthServiceMock = require('@aws-ee/base-services/lib/authorization/authorization-service');
+jest.mock('@amzn/base-services/lib/authorization/authorization-service');
+const AuthServiceMock = require('@amzn/base-services/lib/authorization/authorization-service');
 
-jest.mock('@aws-ee/base-services/lib/audit/audit-writer-service');
-const AuditServiceMock = require('@aws-ee/base-services/lib/audit/audit-writer-service');
+jest.mock('@amzn/base-services/lib/audit/audit-writer-service');
+const AuditServiceMock = require('@amzn/base-services/lib/audit/audit-writer-service');
 
-jest.mock('@aws-ee/base-services/lib/settings/env-settings-service');
-const SettingsServiceMock = require('@aws-ee/base-services/lib/settings/env-settings-service');
+jest.mock('@amzn/base-services/lib/settings/env-settings-service');
+const SettingsServiceMock = require('@amzn/base-services/lib/settings/env-settings-service');
 
-jest.mock('@aws-ee/base-services/lib/lock/lock-service');
-const LockServiceMock = require('@aws-ee/base-services/lib/lock/lock-service');
+jest.mock('@amzn/base-services/lib/lock/lock-service');
+const LockServiceMock = require('@amzn/base-services/lib/lock/lock-service');
 
-jest.mock('@aws-ee/base-services/lib/s3-service');
-const S3ServiceMock = require('@aws-ee/base-services/lib/s3-service');
+jest.mock('@amzn/base-services/lib/s3-service');
+const S3ServiceMock = require('@amzn/base-services/lib/s3-service');
 
-jest.mock('@aws-ee/base-services/lib/aws/aws-service');
-const AwsServiceMock = require('@aws-ee/base-services/lib/aws/aws-service');
+const AwsServiceMock = require('@amzn/base-services/lib/aws/aws-service');
 
-jest.mock('@aws-ee/base-services/lib/plugin-registry/plugin-registry-service');
-const PluginRegistryService = require('@aws-ee/base-services/lib/plugin-registry/plugin-registry-service');
+jest.mock('@amzn/base-services/lib/plugin-registry/plugin-registry-service');
+const PluginRegistryService = require('@amzn/base-services/lib/plugin-registry/plugin-registry-service');
 
 const AwsAccountService = require('../aws-accounts-service');
 
 describe('AwsAccountService', () => {
+  let aws = null;
   let service = null;
   let dbService = null;
   let s3Service = null;
@@ -78,6 +78,8 @@ describe('AwsAccountService', () => {
 
     // Skip authorization by default
     service.assertAuthorized = jest.fn();
+    aws = await container.find('aws');
+    aws.getClientSdkForRole = jest.fn();
   });
 
   describe('find', () => {
@@ -593,6 +595,36 @@ describe('AwsAccountService', () => {
           'This account has active non-AppStream environments. Please terminate them and retry this operation',
         );
       }
+    });
+  });
+
+  describe('getAppstreamSdk', () => {
+    it('should call getDevopsAccountDetails when AMI sharing is enabled', async () => {
+      service.checkIfAmiSharingEnabled = jest.fn(() => {
+        return true;
+      });
+      service.getDevopsAccountDetails = jest.fn(() => {
+        return {
+          roleArn: 'Test_ARN',
+          externalId: 'Test_ID',
+        };
+      });
+      await service.getAppstreamSdk();
+      expect(service.getDevopsAccountDetails).toHaveBeenCalled();
+    });
+
+    it('should not call getDevopsAccountDetails when AMI sharing is disabled', async () => {
+      service.checkIfAmiSharingEnabled = jest.fn(() => {
+        return false;
+      });
+      service.getDevopsAccountDetails = jest.fn(() => {
+        return {
+          roleArn: 'Test_ARN',
+          externalId: 'Test_ID',
+        };
+      });
+      await service.getAppstreamSdk();
+      expect(service.getDevopsAccountDetails).not.toHaveBeenCalled();
     });
   });
 });
