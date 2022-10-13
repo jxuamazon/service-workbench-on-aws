@@ -35,6 +35,9 @@ docs/build
 !*/*/*/config/settings/.defaults.yml
 !*/*/*/config/settings/example*.yml
 !main/infrastructure-tests/config/settings/github.yml
+main/config/settings/jianjx.yml-e
+main/config/settings/jxuswb.yml-e
+main/config/settings/jxuswbdev.yml-e
 
 # rStudio specific
 source/ServiceWorkbenchOnAWS/main/solution/machine-images/config/infra/files/rstudio/*

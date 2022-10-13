@@ -15,11 +15,11 @@
 
 /* eslint-disable no-await-in-loop */
 // const _ = require('lodash');
-const Service = require('@aws-ee/base-services-container/lib/service');
-const ServicesContainer = require('@aws-ee/base-services-container/lib/services-container');
-const SettingsService = require('@aws-ee/base-services/lib/settings/env-settings-service');
+const Service = require('@amzn/base-services-container/lib/service');
+const ServicesContainer = require('@amzn/base-services-container/lib/services-container');
+const SettingsService = require('@amzn/base-services/lib/settings/env-settings-service');
 
-const { allowIfActive, allowIfAdmin } = require('@aws-ee/base-services/lib/authorization/authorization-utils');
+const { allowIfActive, allowIfAdmin } = require('@amzn/base-services/lib/authorization/authorization-utils');
 
 const aws4 = require('aws4');
 const https = require('https');
