@@ -28,7 +28,7 @@ conda create --yes --name "$KERNEL_NAME" --channel r r r-irkernel r-recommended 
 conda activate "$KERNEL_NAME"
 
 pip install --quiet ipykernel 
-conda install --name "$KERNEL_NAME" --yes --channel r r-devtools r-rentrez r-XML r-BiocManager r-oligo
+conda install --name "$KERNEL_NAME" --yes --channel r r-devtools r-rentrez r-XML r-BiocManager
 
 #conda install "r-devtools" --name "$KERNEL_NAME" --yes 
 #conda install "r-rentrez" --name "$KERNEL_NAME" --yes 

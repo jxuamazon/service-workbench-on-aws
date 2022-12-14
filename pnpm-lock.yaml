@@ -2269,6 +2269,7 @@ importers:
       '@amzn/base-services-container': link:../../../addons/addon-base/packages/services-container
       lodash: 4.17.21
     devDependencies:
+      aws4: 1.11.0
       eslint: 6.8.0
       eslint-config-airbnb: 18.2.1_8d88d46baa50c1f24951b035ada57c78
       eslint-config-airbnb-base: 14.2.1_8d88d46baa50c1f24951b035ada57c78
@@ -2286,6 +2287,7 @@ importers:
     specifiers:
       '@amzn/base-services': workspace:*
       '@amzn/base-services-container': workspace:*
+      aws4: 1.11.0
       eslint: ^6.8.0
       eslint-config-airbnb: ^18.2.1
       eslint-config-airbnb-base: ^14.2.1

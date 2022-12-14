@@ -277,7 +277,7 @@ Resources:
               ln -s /home/ec2-user/SageMaker/envs/custom-r /home/ec2-user/anaconda3/envs/custom-r
               EOF
               echo "Restarting the Jupyter server..."
-              restart jupyter-server
+              systemctl restart jupyter-server
 
       OnCreate:
         - Content:

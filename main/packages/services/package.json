@@ -23,7 +23,7 @@
     "jest-junit": "^10.0.0",
     "prettier": "^1.19.1",
     "pretty-quick": "^1.11.1",
-    "aws4": "1.11.0"
+    "aws4": "1.11.0",
     "source-map-support": "^0.5.21"
   },
   "scripts": {

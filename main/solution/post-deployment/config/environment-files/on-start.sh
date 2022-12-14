@@ -22,8 +22,8 @@ rm -rf "$WORKING_DIR/miniconda.sh"
 # Create a custom conda environment
 source "$WORKING_DIR/miniconda/bin/activate"
 KERNEL_NAME="Custom_R"
-PYTHON="3.6"
-conda create --yes --name "$KERNEL_NAME" python="$PYTHON" r-essentials r-base r-devtools r-rentrez r-XML r-BiocManager r-oligo
+PYTHON="3.8"
+conda create --yes --name "$KERNEL_NAME" python="$PYTHON" r-essentials r-base r-devtools r-rentrez r-XML r-BiocManager
 conda activate "$KERNEL_NAME"
 
 pip install --quiet ipykernel
