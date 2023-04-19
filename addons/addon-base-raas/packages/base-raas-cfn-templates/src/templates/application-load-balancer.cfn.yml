@@ -34,22 +34,22 @@ Parameters:
   # Range from 10.0.96.0 to 10.0.96.127
   PublicSubnet1Cidr:
     Type: String
-    Default: 10.0.96.0/25
+    Default: 10.100.96.0/25
 
   # Range from 10.0.96.128 to 10.0.96.255
   PublicSubnet2Cidr:
     Type: String
-    Default: 10.0.96.128/25
+    Default: 10.100.96.128/25
 
   # Range from 10.0.97.0 to 10.0.97.127
   PrivateSubnet1Cidr:
     Type: String
-    Default: 10.0.97.0/25
+    Default: 10.100.97.0/25
 
   # Range from 10.0.97.128 to 10.0.97.255
   PrivateSubnet2Cidr:
     Type: String
-    Default: 10.0.97.128/25
+    Default: 10.100.97.128/25
 
 Conditions:
   AppStreamEnabled: !Equals [!Ref IsAppStreamEnabled, 'true']
